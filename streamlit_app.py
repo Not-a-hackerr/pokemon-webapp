@@ -1,119 +1,120 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import requests
+import random
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
-st.title("📊 Data evaluation app")
+title = st.title('Pokemon Explorer')
 
-st.write(
-    "We are so glad to see you here. ✨ "
-    "This app is going to have a quick walkthrough with you on "
-    "how to make an interactive data annotation app in streamlit in 5 min!"
-)
+pokemon_number = st.text_input('Chose a pokemon number')
 
-st.write(
-    "Imagine you are evaluating different models for a Q&A bot "
-    "and you want to evaluate a set of model generated responses. "
-    "You have collected some user data. "
-    "Here is a sample question and response set."
-)
+if 'rand_num' not in st.session_state.keys():
+    st.session_state['rand_num'] = random.randint(1,1025)
+    
+rand = st.session_state['rand_num']
+    
 
-data = {
-    "Questions": [
-        "Who invented the internet?",
-        "What causes the Northern Lights?",
-        "Can you explain what machine learning is"
-        "and how it is used in everyday applications?",
-        "How do penguins fly?",
-    ],
-    "Answers": [
-        "The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting"
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds.",
-    ],
-}
+def pokemon(pokemon_number):
+    url = f'https://pokeapi.co/api/v2/pokemon/{pokemon_number}/'
+    response = requests.get(url)
+    pokemon = response.json()
 
-df = pd.DataFrame(data)
+    return pokemon
+    
 
-st.write(df)
+try:
+    pokemon1 = pokemon(pokemon_number)
+    pokemon2 = pokemon(str(rand))
 
-st.write(
-    "Now I want to evaluate the responses from my model. "
-    "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-    "You will now notice our dataframe is in the editing mode and try to "
-    "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇"
-)
+    
 
-df["Issue"] = [True, True, True, False]
-df["Category"] = ["Accuracy", "Accuracy", "Completeness", ""]
+    image1 = pokemon1['sprites']['other']['official-artwork']['front_default']
+    image2 = pokemon2['sprites']['other']['official-artwork']['front_default']
 
-new_df = st.data_editor(
-    df,
-    column_config={
-        "Questions": st.column_config.TextColumn(width="medium", disabled=True),
-        "Answers": st.column_config.TextColumn(width="medium", disabled=True),
-        "Issue": st.column_config.CheckboxColumn("Mark as annotated?", default=False),
-        "Category": st.column_config.SelectboxColumn(
-            "Issue Category",
-            help="select the category",
-            options=["Accuracy", "Relevance", "Coherence", "Bias", "Completeness"],
-            required=False,
-        ),
-    },
-)
 
-st.write(
-    "You will notice that we changed our dataframe and added new data. "
-    "Now it is time to visualize what we have annotated!"
-)
 
-st.divider()
+    poke = pd.DataFrame(columns=['HP', 'Attack', 'Defense', 'Speacial Attack', 'Special Defense', 'Speed'])
+    poke.loc[0] = [ pokemon1['stats'][0]['base_stat'], pokemon1['stats'][1]['base_stat'], pokemon1['stats'][2]['base_stat'], pokemon1['stats'][3]['base_stat'], pokemon1['stats'][4]['base_stat'], pokemon1['stats'][5]['base_stat']]
+    poke.loc[1] = [ pokemon2['stats'][0]['base_stat'], pokemon2['stats'][1]['base_stat'], pokemon2['stats'][2]['base_stat'], pokemon2['stats'][3]['base_stat'], pokemon2['stats'][4]['base_stat'], pokemon2['stats'][5]['base_stat']]
+    
 
-st.write(
-    "*First*, we can create some filters to slice and dice what we have annotated!"
-)
+    
+    header = st.header(f"{pokemon1['name'].upper()} VS {pokemon2['name'].upper()}")
 
-col1, col2 = st.columns([1, 1])
-with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options=new_df.Issue.unique())
-with col2:
-    category_filter = st.selectbox(
-        "Choose a category",
-        options=new_df[new_df["Issue"] == issue_filter].Category.unique(),
-    )
 
-st.dataframe(
-    new_df[(new_df["Issue"] == issue_filter) & (new_df["Category"] == category_filter)]
-)
+    # Pictures & Audio
+    cola, colb = st.columns(2)
+    with cola:
+        st.image(image1)
+        st.audio(pokemon1['cries']['latest'], format="audio/wav", start_time=0, sample_rate=None)
+    with colb:
+        st.image(image2)
+        st.audio(pokemon2['cries']['latest'], format="audio/wav", start_time=0, sample_rate=None)
 
-st.markdown("")
-st.write(
-    "*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`"
-)
 
-issue_cnt = len(new_df[new_df["Issue"] == True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
 
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.metric("Number of responses", issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
 
-df_plot = new_df[new_df["Category"] != ""].Category.value_counts().reset_index()
+    # Height Comparison Graph
+    height = {'Pokemon':[pokemon1['name'],pokemon2['name']], 'Height':[pokemon1['height'],pokemon2['height']]}
+    height_data = pd.DataFrame( data=height)
+    
+    fig, ax = plt.subplots(1, figsize=(10,10))
 
-st.bar_chart(df_plot, x="Category", y="count")
+    h_graph = sns.barplot(data=height_data,
+                          x = 'Pokemon',
+                          y='Height',
+                          ax=ax)
+    
+    ax.set_title('Height')
 
-st.write(
-    "Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:"
-)
 
+
+    labels = np.array(['HP', 'Attack', 'Defense', 'Special Attack', 'Special Defense', 'Speed'])
+
+    # Extract stats for both Pokémon
+    stats1 = poke.loc[0]
+    stats2 = poke.loc[1]
+    
+
+    # Calculate angles for the radar chart
+    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+
+    # Complete the loop
+    stats1 = np.concatenate((stats1, [stats1[0]]))
+    stats2 = np.concatenate((stats2, [stats2[0]]))
+    angles += angles[:1]
+
+
+    fig1 = plt.figure()
+    ax = fig1.add_subplot(111, polar=True)
+
+    # Plot data for the first Pokémon
+    ax.plot(angles, stats1, 'o-', linewidth=2, label=pokemon1['name'])
+    ax.fill(angles, stats1, alpha=0.25)
+
+    # Plot data for the second Pokémon
+    ax.plot(angles, stats2, 'o-', linewidth=2, label=pokemon2['name'])
+    ax.fill(angles, stats2, alpha=0.25)
+
+    # Set the labels for each axis
+    ax.set_thetagrids(np.degrees(angles[:-1]), labels)
+
+    # Add a legend to differentiate between the two Pokémon
+    ax.legend(loc='upper right')
+
+    ax.grid(True)
+
+
+    st.pyplot(fig1)
+ 
+    st.pyplot(fig)
+
+
+    
+    
+
+except:
+    pass

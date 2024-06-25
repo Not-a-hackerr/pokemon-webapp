@@ -1,1 +1,6 @@
 streamlit
+matpolotlib
+seaborn
+psycopg2-binary
+pandas
+numpy
